@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="aiyunnet.dao.SysUserDao">
+	<resultMap type="aiyunnet.entity.SysUser" id="sysUserMapper">
+		<id property="id" column="id" />
+		<result property="account" column="account" />
+		<result property="password" column="password" />
+		<result property="email" column="email" />
+		<result property="phone" column="phone" />
+		<result property="salt" column="salt"/>
+		<result property="addon" column="addon" />
+		<result property="flagDelete" column="flag_delete" />
+	</resultMap>
+	
+	<insert id="addSysUser"
+		parameterType="aiyunnet.entity.SysUser" keyProperty="id" useGeneratedKeys="true">
+		insert into
+		sys_user(account,password,email,phone,salt,addon)
+		values(#{account},#{password},#{email},#{phone},#{salt},now())
+	</insert>
+	<select id="getSysUserList" resultType="aiyunnet.entity.SysUser">
+		select * from sys_user
+		where flag_delete=0 order by addon desc
+	</select>
+	<select id="getSysUserById" parameterType="_int"
+		resultType="aiyunnet.entity.SysUser">
+		select * from sys_user where id=#{id} and flag_delete=0
+	</select>
+	<update id="changeSysUserPassword">
+		update sys_user set password=#{newpwd},salt=#{salt},editon=now()
+		where id=#{id}
+	</update>
+	<update id="updateSysUser"
+		parameterType="aiyunnet.entity.SysUser">
+		update sys_user set account=#{account}, phone=#{phone},
+		email=#{email},
+		editon=now() where id=#{id}
+	</update>
+	<select id="getLoginUser" resultMap="sysUserMapper">
+		select * from
+		sys_user where
+		account=#{account} and
+		password=#{password} and
+		flag_delete=0
+	</select>
+	<delete id="deleteSysUser">
+		update sys_user set flag_delete=1 where id=#{id}
+	</delete>
+	<select id="getSysUserByName" resultMap="sysUserMapper">
+		select * from sys_user where account=#{username} and flag_delete=0
+	</select>
+	<select id="getSalt" resultType="string">
+		select salt from sys_user where account=#{username}
+	</select>
+</mapper>

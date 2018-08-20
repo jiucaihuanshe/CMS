@@ -1,0 +1,29 @@
+@charset "UTF-8";
+
+.box-footer button {
+	width: 100px;
+	margin-right: 20px;
+}
+
+input.error {
+	border-color: #ff0000;
+}
+
+label.error {
+	color: #ff0000;
+}
+
+td.operate .fa-edit {
+	color: #4cae4c;
+	font-size: 20px;
+	margin-right:10px;
+}
+
+td.operate .fa-trash-o {
+	color: #ff0000;
+	font-size: 20px;
+}
+
+label.valid{
+	display:none !important;
+}

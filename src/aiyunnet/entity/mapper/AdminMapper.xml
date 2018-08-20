@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="aiyunnet.dao.AdminDao">
+	<resultMap type="aiyunnet.entity.WebNews" id="webNewsMapper">
+		<id property="id" column="id" />
+		<result property="menuId" column="menu_id" />
+		<result property="title" column="title" />
+		<result property="subTitle" column="sub_title" />
+		<result property="brief" column="brief" />
+		<result property="content" column="content" />
+		<result property="linkUrl" column="link_url" />
+		<result property="author" column="author" />
+		<result property="readCount" column="read_count" />
+		<result property="sortOrder" column="sort_order" />
+		<result property="keywords" column="keywords" />
+		<result property="status" column="status" />
+		<result property="addon" column="addon" />
+		<result property="flagDelete" column="flag_delete" />
+	</resultMap>
+
+	<resultMap type="aiyunnet.entity.WebFile" id="webFileMapper">
+		<id property="id" column="id" />
+		<result property="outId" column="out_id" />
+		<result property="fileName" column="file_name" />
+		<result property="fileType" column="file_type" />
+		<result property="filePath" column="file_path" />
+		<result property="addon" column="addon" />
+		<result property="flagDelete" column="flag_delete" />
+	</resultMap>
+
+	<resultMap type="aiyunnet.entity.SysRole" id="sysRoleMapper">
+		<id property="id" column="id" />
+		<result property="parentId" column="parent_id" />
+		<result property="name" column="name" />
+	</resultMap>
+	
+	<!-- WebMenu -->
+	<insert id="addWebMenu" keyProperty="id" useGeneratedKeys="true"
+		parameterType="aiyunnet.entity.WebMenu">
+		insert into
+		web_menus(title,parent_id,addon)
+		values(#{title},#{parentId},now())
+	</insert>
+	<update id="updateWebMenu">
+		update web_menus set title=#{array[0]} where
+		id=#{array[1]}
+	</update>
+	<select id="getWebMenu">
+		select * from web_menus where id=#{id} and
+		flag_delete=0
+	</select>
+	<delete id="deleteWebMenu" parameterType="_int">
+		update web_menus set
+		flag_delete=1, deleteon=now() where id=#{id}
+	</delete>
+	<delete id="deleteNewsByMenuId" parameterType="_int">
+		update web_news
+		set flag_delete=1, deleteon=now() where menu_id=#{id}
+	</delete>
+
+	<!-- WebNews -->
+	<insert id="addWebNews" keyProperty="id" useGeneratedKeys="true"
+		parameterType="aiyunnet.entity.WebNews">
+		insert into
+		web_news(title,menu_id,sub_title,brief,content,link_url,author,read_count,sort_order,keywords,addon)
+		values(#{title},#{menuId},#{subTitle},#{brief},#{content},#{linkUrl},#{author},#{readCount},#{sortOrder},#{keywords},now())
+	</insert>
+	<select id="getWebNewsById" resultMap="webNewsMapper">
+		select * from web_news
+		where
+		id=#{id} and flag_delete=0
+	</select>
+	<select id="getWebNewsList" resultMap="webNewsMapper">
+		select * from web_news
+		where
+		menu_id=#{menuId} and flag_delete=0
+	</select>
+	<update id="updateWebNews"
+		parameterType="aiyunnet.entity.WebNews">
+		update web_news set
+		title=#{title},sub_title=#{subTitle},brief=#{brief},content=#{content},link_url=#{linkUrl},read_count=#{readCount}
+		,keywords=#{keywords},author=#{author},editon=now()
+		where id=#{id}
+	</update>
+	<update id="updateReadCount">
+		update web_news set read_count=read_count+1 where
+		id=#{id}
+	</update>
+	<delete id="deleteWebNews">
+		update web_news set flag_delete=1, deleteon=now()
+		where id=#{id}
+	</delete>
+	<delete id="deleteWebNewsByIds">
+		delete from web_news where id in
+		<foreach collection="ids" open="(" close=")" separator=","
+			item="id">
+			#{id}
+		</foreach>
+	</delete>
+	<select id="searchWebNews" resultMap="webNewsMapper">
+		select * from web_news where flag_delete=0
+		and (0=#{menuId} or menu_id=#{menuId} )
+		<if test="author!=null and author!=''">
+			and author=#{author}
+		</if>
+		<if test="title!=null and title!=''">
+			and title like concat("%",#{title},"%")
+		</if>
+		<if test="keywords!=null and keywords!=''">
+			and keywords like concat("%",#{keywords},"%")
+		</if>
+		<if test="content!=null and content!=''">
+			and content like concat("%",#{content},"%")
+		</if>
+	</select>
+
+	<!-- WebFiles -->
+	<insert id="addWebFile" keyProperty="id" useGeneratedKeys="true"
+		parameterType="aiyunnet.entity.WebFile">
+		insert into
+		web_files(out_id,file_name,file_type,file_path,addon,flag_delete)
+		values(#{outId},#{fileName},#{fileType},#{filePath},#{addon},1)
+	</insert>
+	<update id="addWebFileOutId">
+		update web_files set out_id=#{outId},flag_delete=0
+		where id=#{id}
+	</update>
+	<update id="updateWebFile"
+		parameterType="aiyunnet.entity.WebFile">
+		update web_files set
+		out_id=#{outId},file_name=#{fileName},file_type=#{fileType}
+		,file_path=#{filePath} where id=#{id}
+	</update>
+	<select id="getWebFileById" resultMap="webFileMapper">
+		select * from web_files
+		where id=#{id} and flag_delete=0
+	</select>
+	<select id="getWebFilesByOutId" resultMap="webFileMapper">
+		select * from
+		web_files where out_id=#{outId} and flag_delete=0
+	</select>
+	<delete id="deleteWebFiles">
+		update web_files set flag_delete=1, deleteon=now()
+		where out_id=#{outId}
+	</delete>
+	<delete id="deleteWebFile">
+		update web_files set flag_delete=1, deleteon=now()
+		where id=#{id}
+	</delete>
+	
+	<!-- SysRole -->
+	<insert id="addSysRole" keyProperty="id" useGeneratedKeys="true"
+		parameterType="aiyunnet.entity.SysRole">
+		insert into sys_role(name,parent_id,addon)
+		values(#{name},#{parentId},now())	
+	</insert>
+	<select id="getSysRoles" resultMap="sysRoleMapper">
+		select id,parent_id,name,addon from sys_role where flag_delete=0
+	</select>
+	<select id="getSysRole" resultMap="sysRoleMapper">
+		select id,parent_id,name,addon from sys_role where id=#{id} and flag_delete=0
+	</select>
+	<delete id="deleteSysRole">
+		update sys_role set flag_delete=1 where id=#{id}
+	</delete>
+	<insert id="addSysRoleUsers">
+		insert into sys_role_user(user_id,role_id) values
+		<foreach collection="roleIds" separator="," item="roleId">
+			(#{userId},#{roleId})
+		</foreach>
+	</insert>
+	<delete id="deleteSysRoleUser">
+		delete from sys_role_user where user_id=#{userId}
+	</delete>
+	<select id="getSysRolesByUserId" resultMap="sysRoleMapper">
+		select sr.id,sr.name 
+		from sys_role_user sru inner join sys_role sr 
+		on sru.role_id=sr.id
+		where sru.user_id=#{userId} and sr.flag_delete=0
+	</select>
+</mapper>

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:cache="http://www.springframework.org/schema/cache"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context-4.3.xsd
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+    http://www.springframework.org/schema/tx
+    http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+    http://www.springframework.org/schema/jdbc
+    http://www.springframework.org/schema/jdbc/spring-jdbc-4.3.xsd
+    http://www.springframework.org/schema/cache
+    http://www.springframework.org/schema/cache/spring-cache-4.3.xsd
+    http://www.springframework.org/schema/aop
+    http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+    http://www.springframework.org/schema/util
+    http://www.springframework.org/schema/util/spring-util-4.3.xsd
+    http://www.springframework.org/schema/mvc
+    http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+    http://www.springframework.org/schema/data/jpa
+    http://www.springframework.org/schema/data/jpa/spring-jpa-1.3.xsd">
+
+	<context:component-scan
+		base-package="aiyunnet.web.controller,aiyunnet.service.impl"></context:component-scan>
+	<!-- 配置根视图 -->
+	<mvc:view-controller path="/" view-name="index" />
+	<!-- 静态资源配置 -->
+	<mvc:resources location="/static/" mapping="/static/**"></mvc:resources>
+
+	<mvc:annotation-driven></mvc:annotation-driven>
+	<!-- 允许对静态资源文件的访问 -->
+	<mvc:default-servlet-handler />
+
+	<bean id="viewResolver"
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/pages/"></property>
+		<property name="suffix" value=".jsp"></property>
+	</bean>
+
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="defaultEncoding" value="utf-8"></property>
+		<property name="maxUploadSize" value="4096000000"></property>
+		<property name="maxInMemorySize" value="1024000"></property>
+	</bean>
+
+	<!-- Dao接口不需要实现，借助spring mybatis，自动扫描接口并结合mapper文件，完成dao接口的实现实例化对象。
+	自动装配到service实现类中的dao属性。
+	简化代码，因为dao的实现类代码都是使用mybatis的session，调用mapper的方法，然后关闭session。
+ 	-->
+ 	<!-- 使用app.config类文件代替配置文件  -->
+	<!-- <context:component-scan
+		base-package="aiyunnet.service.impl"></context:component-scan>
+		 -->
+
+	<!-- 整合druid连接池 -->
+	<util:properties id="config"
+		location="classpath:jdbc.properties"></util:properties>
+	<bean id="druidDataSource"
+		class="com.alibaba.druid.pool.DruidDataSource" init-method="init"
+		destroy-method="close">
+		<property name="driverClassName" value="#{config.driver}" />
+		<property name="url" value="#{config.url}" />
+		<property name="username" value="#{config.username}" />
+		<property name="password" value="#{config.password}" />
+
+		<!-- 配置初始化大小、最小、最大 -->
+		<property name="initialSize" value="5" />
+		<property name="minIdle" value="1" />
+		<property name="maxActive" value="20" />
+	</bean>
+	
+	<!-- 整合mybatis -->
+	<bean id="sqlSessionFactory"
+		class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="druidDataSource"></property>
+		<property name="configLocation"
+			value="classpath:mybatis-config.xml"></property>
+	</bean>
+	
+	<!--  Mapper接口所在包，Spring会自动查找其下的接口，然后跟mybatis-config中指定的mapper文件结合，生成dao实现对象，并注入到service类中 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="aiyunnet.dao"/>
+	</bean> 
+		
+	<bean id="sqlSessionTemplate"
+		class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg ref="sqlSessionFactory"></constructor-arg>
+	</bean>
+
+	<!-- 配置shiro框架-->
+	<!-- <bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">  
+        <property name="exceptionMappings">  
+            <props>  
+                <prop key="org.apache.shiro.authz.UnauthorizedException">/static/403.html</prop>
+            </props>  
+        </property>  
+    </bean>
+	 -->
+		
+	<!-- 配置CacheManager对象(不是必须的,主要是为了提高性能,可以对认证信息以及授权信息进行缓存) -->
+	<!-- 需要借助ehcache来实现，需要引入ehcache-core.jar -->
+	<!-- 也可以自己写个静态set放入内存中，当做缓存来存储权限数据；也可以使用redis等第三方缓存产品类存储 -->
+    <bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+        <property name="cacheManagerConfigFile" value="classpath:ehcache.xml"/> 
+    </bean>
+	
+	 <!--注入自定义的Realm-->
+	 <!-- 配置realm对象(将给spring管理) -->
+    <bean id="userRealm" class="aiyunnet.service.SysUserRealm"></bean>
+    
+    <!-- 配置securityManager对象(此对象时shiro框架核心) -->
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="realm" ref="userRealm"></property>
+        <property name="cacheManager" ref="cacheManager"/> 
+    </bean>
+	
+	<!--Shiro生命周期处理器-->
+	<bean id="lifecycleBeanPostProcessor" 
+	class="org.apache.shiro.spring.LifecycleBeanPostProcessor"/>
+	
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+        depends-on="lifecycleBeanPostProcessor" />
+	<bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="securityManager" ref="securityManager" />
+	</bean>
+	
+	<!-- 配置ShiroFilter(通过此filter的配置实现对请求资源的过滤,哪些请求要放行,哪些要认证)-->
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+         <!-- shiro的核心安全接口 -->
+         <property name="securityManager" ref="securityManager"/>
+         <!-- 要求登录时的连接 -->
+         <property name="loginUrl" value="/Account/login.do"></property> 
+         <!-- 登录成功后要跳转的连接(此处已经在登录中处理了) -->
+         <!-- <property name="successUrl" value="/index.jsp"></property> -->
+         <!-- 访问未对其授权的资源时,要跳转的连接 -->
+         <property name="unauthorizedUrl" value="/Account/noPermission.do"></property>
+         <!-- shiro连接约束配置 -->
+         <property name="filterChainDefinitions">
+             <value>
+             	/static/** = anon
+              	/Account/login.do = anon
+              	/Account/dologin.do = anon
+              	/Account/validateCode.do = anon
+              	/Admin/** = authc
+             </value>
+         </property>
+     </bean>
+	
+	<!--启用shiro注解权限检查(@RequestPermissions)-->
+	<bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+	    depends-on="lifecycleBeanPostProcessor"/>
+	<bean  class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+	    <property name="securityManager" ref="securityManager"/>
+	</bean>
+
+	<!-- 配置spring事务管理 -->
+	<aop:config proxy-target-class="true"></aop:config>
+	
+	<!--1)定义事务管理对象(可以将此对象理解为切面) -->
+	<bean id="txManager"
+	      class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+	      <property name="dataSource" ref="druidDataSource"/>
+	</bean>
+	
+	<tx:annotation-driven transaction-manager="txManager"/>
+	
+	<!-- 推荐在service类或是方法上加注解的形式来声明事务策略 -->
+	<!-- 涉及到多个表操作，而且数据之间有关系的服务方法，一般需要使用事务，保证执行都正确，减少产生脏数据 -->
+	<!-- 2)配置事务策略 -->
+    <!-- <tx:advice id="txAdvice" transaction-manager="txManager">
+       <tx:attributes>
+           <tx:method name="find*" read-only="true" isolation="READ_COMMITTED"/>
+           <tx:method name="save*" propagation="REQUIRED"/>
+           <tx:method name="update*" propagation="REQUIRED"/>
+           <tx:method name="delete*" propagation="REQUIRED"/>
+           <tx:method name="valid*" propagation="REQUIRED"/>
+           <tx:method name="*"/>
+       </tx:attributes>
+    </tx:advice> -->
+    <!-- 3)配置事务应用(在哪些业务对象的哪些方法上使用事务) -->
+    <!-- <aop:config>
+       <aop:pointcut expression="execution(* com.jt.sys.service..*.*(..))"
+                     id="txPointcut"/>
+       <aop:advisor advice-ref="txAdvice" pointcut-ref="txPointcut"/>          
+    </aop:config>-->
+    
+</beans>
